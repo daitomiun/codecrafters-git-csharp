@@ -20,7 +20,7 @@ if (command == "init")
 } else if (command == "cat-file")
 {
     // Assign the params and directories
-    string shaParam = args[2];
+    String shaParam = args[2];
     String hashedDir = shaParam[..2];
     String file = shaParam[2..];
     
