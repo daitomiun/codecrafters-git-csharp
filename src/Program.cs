@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -78,18 +76,44 @@ if (command == "init")
     {
         Console.WriteLine("File not found");
     }
-    // Create hash directory by getting the size of the file and contents of it
-    /*
-    String shaParam = ""; // <----- create SHA hash
-    String hashedDir = shaParam[..2]; //Split it for dir
-    String blob = shaParam[2..]; //Split it for file blob name
+} else if (command == "ls-tree")
+{
+    String gitObjectsPath = ".git/objects/";
+    String shaParam = args[2];
 
-    Directory.CreateDirectory($".git/objects/{hashedDir}/");
-   */
-    // Copy file to hash and compress it to a blob of bytes with the name of blob
+    var getDirs = Directory.GetDirectories(gitObjectsPath);
 
+    foreach (var dir in getDirs)
+    {
+        var searchPath = shaParam.Substring(0, 2);
+        var splitDir = dir.Split("/").Last();
+        if (searchPath.Equals(splitDir))
+        {
+            var getFile = Directory.GetFiles($"{dir}/")[0];
+            var compressedFile = new FileStream(getFile, FileMode.Open, FileAccess.ReadWrite);
+            using var zLibStream = new ZLibStream(compressedFile, CompressionMode.Decompress);
+            using var reader = new StreamReader(zLibStream);
 
-    // Write line of the hash created
+            var contents = reader.ReadToEnd();
+
+            var treeObjectLines = contents.Split(" ");
+            var listObjectNames = new List<string>();
+
+            for (var i = 2; i < treeObjectLines.Length; i++)
+            {
+                // Used to split null characters to make a correct division of every object
+                var name = treeObjectLines[i].Split("\0")[0];
+                listObjectNames.Add(name);
+            }
+
+            foreach (var name in listObjectNames.OrderBy(x => x))
+            {
+                Console.WriteLine(name);
+            }
+        }
+    }
+
+    
 } else
 {
     throw new ArgumentException($"Unknown command {command}");
