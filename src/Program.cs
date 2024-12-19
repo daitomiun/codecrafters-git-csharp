@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
 
 if (args.Length < 1)
 {
@@ -45,8 +47,50 @@ if (command == "init")
     // After this it reads until the end to then write it without a line jump
     var content = reader.ReadToEnd();
     Console.Write(content.Split('\x00')[1]);
-}
-else
+    deflateStream.Flush();
+} else if (command == "hash-object")
+{
+    // Copy file to hash and compress it to a blob of bytes with the name of blob
+    String fileToCopy = Directory.GetFiles("./", "*.txt")[0];
+
+    if (File.Exists(fileToCopy))
+    {
+        Byte[] fileByteContents = File.ReadAllBytes(fileToCopy);
+        Byte[] header =Encoding.UTF8.GetBytes($"blob {fileByteContents.Length}\0");
+
+        Byte[] combineBytes = [..header, ..fileByteContents];
+
+        // We hash the file according to git's stantard
+        // https://stackoverflow.com/questions/7225313/how-does-git-compute-file-hashes
+        String hashFromFile = Convert.ToHexString(SHA1.HashData(combineBytes)).ToLower();
+        String hashDir = hashFromFile.Substring(0, 2);
+        String hashFile = hashFromFile.Substring(2);
+        
+        Directory.CreateDirectory($".git/objects/{hashDir}/");
+        var compressedFilePath = Path.Combine($".git/objects/{hashDir}/", hashFile);
+        var compressedFile = new FileStream(compressedFilePath, FileMode.Create, FileAccess.Write);
+        using var zLibStream = new ZLibStream(compressedFile, CompressionMode.Compress);
+        zLibStream.Write(combineBytes);
+        
+        Console.WriteLine(hashFromFile);
+    }
+    else
+    {
+        Console.WriteLine("File not found");
+    }
+    // Create hash directory by getting the size of the file and contents of it
+    /*
+    String shaParam = ""; // <----- create SHA hash
+    String hashedDir = shaParam[..2]; //Split it for dir
+    String blob = shaParam[2..]; //Split it for file blob name
+
+    Directory.CreateDirectory($".git/objects/{hashedDir}/");
+   */
+    // Copy file to hash and compress it to a blob of bytes with the name of blob
+
+
+    // Write line of the hash created
+} else
 {
     throw new ArgumentException($"Unknown command {command}");
 }
